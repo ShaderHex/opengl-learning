@@ -2,24 +2,29 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
+#include <stb/stb_image.h>
+
 #include "EBO.h"
 #include "shaderClass.h"
 #include "VAO.h"
 #include "VBO.h"
+#include "Texture.h"
 
 // Vertices coordinates
-GLfloat vertices[] = {
-    -0.5f, -0.5f, 0.0f, // bottom-left corner
-    0.5f, -0.5f, 0.0f, // bottom-right corner
-    0.5f,  0.5f, 0.0f, // top-right corner
-    -0.5f,  0.5f, 0.0f  // top-left corner
-};    
+GLfloat vertices[] =
+{
+    //    Coordinate           /       Colours     //
+	-0.5f,  -0.5,   0.0f,       1.0f,   0.0f,   0.0f,   0.0f, 0.0f,
+    -0.5f,   0.5,   0.0f,       0.0f,   1.0f,   0.0f,   0.0f, 1.0f,
+     0.5f,   0.5,   0.0f,       0.0f,   0.0f,   1.0f,   1.0f, 1.0f,
+     0.5f,  -0.5,   0.0f,       1.0f,   1.0f,   1.0f,   1.0f, 0.0f
+};  
 
 // Indices for vertices order
 GLuint indices[] =
 {
-	0, 1, 2, // First triangle: bottom-left, bottom-right, top-right
-    2, 3, 0 // Second triangle: top-right, top-left, bottom-left
+	0, 2, 1,
+    3, 0, 2
 };
 
 // Vertex Shader source code
@@ -69,43 +74,52 @@ int main() {
     // Checks for resize
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+    // Loads the shaders
     Shader shaderProgram("Shaders/default.vert", "Shaders/default.frag");
 
+    // Binds VAO, VBO and EBO also unbinds
     VAO VAO1;
     VAO1.Bind();
 
     VBO VBO1(vertices, sizeof(vertices));
+
     EBO EBO1(indices, sizeof(indices));
 
-    VAO1.LinkVBO(VBO1, 0);
+    VAO1.LinkAttrib(VBO1, 0, 2, GL_FLOAT, 8 * sizeof(float), (void*)0);
+    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     VAO1.Unbind();
     VBO1.Unbind();
     EBO1.Unbind();
 
+    GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
+
+    Texture memeImage("image.jpg", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+    memeImage.texUnit(shaderProgram, "tex0", 0);
+
     while (!glfwWindowShouldClose(window)) {
-        
+        // Clear screen
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        // Uses the Shader Program
         shaderProgram.Activate();
+        glUniform1f(uniID, 0.5);
+        memeImage.Bind();
+        // Binds VAO
         VAO1.Bind();
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Draws on the screen
+        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
         glfwSwapBuffers(window);
 
         // Handles any types of change like resize and more
         glfwPollEvents();
     }
-
-    std::cout << "About to delete VAO\n";
+    // Delets VAO, VBO and EBO
     VAO1.Delete();
-    std::cout << "Deleted VAO\n";
-    
-    std::cout << "VBO ID = " << VBO1.ID << std::endl;
     VBO1.Delete();
-    std::cout << "Deleted VBO\n";
-    
-    std::cout << "About to delete EBO\n";
     EBO1.Delete();
-    std::cout << "Deleted EBO\n";
+    memeImage.Unbind();
+    memeImage.Delete();
     
 
     // De-Init and closes
